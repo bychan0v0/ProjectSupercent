@@ -102,14 +102,53 @@ public class AutoItemTransfer : MonoBehaviour
             var type = acc.Type;
             if (type == null || _carrier.Count(type) <= 0 || sink.CapacityLeft(type) <= 0) continue;
 
+            // 1) 데이터 선감소
             if (!_carrier.TryRemoveOne(type)) continue;
-            sink.TryStore(type, 1);
+
+            // 2) 손에서 실제 GO 꺼냄
+            if (!TryGetComponent<StackCarrier>(out var stack)) { sink.TryStore(type, 1); return true; }
+            var shelf = (sink as Component)?.GetComponent<ProductShelf>();
+            if (!shelf) { sink.TryStore(type, 1); return true; }
+
+            var go = stack.PopTop();
+            if (!go)
+            {
+                sink.TryStore(type, 1);
+                return true;
+            }
+
+            // 3) 목표 좌표
+            var to = shelf.GetNextSlotWorldPos();
+
+            // 4) 애니메이션으로 이동 후 진열대에 꽂고, 그 다음 데이터 증가(동기화)
+            StartCoroutine(MoveThenPlaceAndStore(go, to, 0.15f, () =>
+            {
+                if (shelf.AcceptFromHand(go))
+                    sink.TryStore(type, 1);
+                else
+                    sink.TryStore(type, 1); // 꽉 찼다면 정책에 맞게 처리(여기선 데이터만 맞춰둠)
+            }));
 
             return true;
         }
         return false;
     }
 
+    private IEnumerator MoveThenPlaceAndStore(GameObject go, Vector3 to, float dur, System.Action onArrive)
+    {
+        var from = go.transform.position;
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.deltaTime;
+            float a = Mathf.Clamp01(t / dur); a = a*a*(3f - 2f*a);
+            go.transform.position = Vector3.Lerp(from, to, a);
+            yield return null;
+        }
+        go.transform.position = to;
+        onArrive?.Invoke();
+    }
+    
     private static bool IsInMask(int layer, LayerMask mask)
     {
         return ((1 << layer) & mask.value) != 0;

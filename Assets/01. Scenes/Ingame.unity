@@ -466,6 +466,37 @@ Transform:
   m_Father: {fileID: 152616740}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &275430271
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 275430272}
+  m_Layer: 0
+  m_Name: GridPos
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &275430272
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 275430271}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.75, y: 0, z: -0.3}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3319211819454909126}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &292390791
 GameObject:
   m_ObjectHideFlags: 0
@@ -910,6 +941,7 @@ MonoBehaviour:
   spacing: 0.35
   suckDuration: 0.15
   snapDuration: 0.1
+  stackedLocalEuler: {x: 0, y: 90, z: 0}
 --- !u!1 &598122749
 GameObject:
   m_ObjectHideFlags: 0
@@ -1675,8 +1707,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   product: {fileID: 11400000, guid: 929223723aa1f4844b0362f5982c4537, type: 2}
-  capacity: 10
+  capacity: 8
   current: 0
+  gridRoot: {fileID: 275430272}
+  rows: 2
+  cols: 4
+  cellSize: {x: 0.5, y: 0.6}
+  localOffset: {x: 0, y: 0, z: 0}
+  itemLocalEuler: {x: 0, y: 0, z: 0}
 --- !u!65 &935360443
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2634,10 +2672,11 @@ MonoBehaviour:
   product: {fileID: 11400000, guid: 929223723aa1f4844b0362f5982c4537, type: 2}
   capacity: 8
   current: 0
-  spawnInterval: 1.2
+  spawnInterval: 1.5
   spawnBatch: 1
   autoStart: 1
   startDelay: 0
+  explicitPoolKey: Croissant
   spawnPoint: {fileID: 1096314714}
   boxRoot: {fileID: 1343134511285121007}
   boxHalfSize: {x: 1, y: 1}
@@ -2968,7 +3007,7 @@ MonoBehaviour:
   pools:
   - key: Croissant
     prefab: {fileID: 7814139412610811324, guid: 73d47b66bb359496983ec865fa65711b, type: 3}
-    initialSize: 10
+    initialSize: 8
 --- !u!4 &2023086361
 Transform:
   m_ObjectHideFlags: 0
@@ -3025,7 +3064,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2046030370}
   - component: {fileID: 2046030371}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: POS
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3603,6 +3642,7 @@ Transform:
   m_Children:
   - {fileID: 9137183514563378982}
   - {fileID: 5316203536080178790}
+  - {fileID: 275430272}
   m_Father: {fileID: 935360441}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}

@@ -9,6 +9,7 @@ public class StackCarrier : MonoBehaviour
     public float spacing = 0.18f;
     public float suckDuration = 0.15f;
     public float snapDuration = 0.10f;
+    public Vector3 stackedLocalEuler = new(0,90,0);
 
     private readonly List<GameObject> _stack = new();
 
@@ -44,8 +45,27 @@ public class StackCarrier : MonoBehaviour
             go.transform.localPosition = Vector3.Lerp(from, to, a); yield return null; }
 
         go.transform.localPosition = to;
-        go.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+        go.transform.localRotation = Quaternion.Euler(stackedLocalEuler);
         go.transform.localScale = Vector3.one;
         _stack.Add(go);
+    }
+    
+    public GameObject PopTop()
+    {
+        if (_stack.Count == 0) return null;
+        int top = _stack.Count - 1;
+        var go = _stack[top];
+        _stack.RemoveAt(top);
+        go.transform.SetParent(null, true);
+        if (go.TryGetComponent<Rigidbody>(out var rb)) { rb.isKinematic = true; rb.velocity=Vector3.zero; rb.angularVelocity=Vector3.zero; }
+        if (go.TryGetComponent<Collider>(out var col)) col.enabled = false;
+        return go;
+    }
+
+    public void FinalizeStackPose(GameObject go, int index)
+    {
+        go.transform.localPosition = Vector3.up * (spacing * index);
+        go.transform.localRotation = Quaternion.Euler(stackedLocalEuler);
+        go.transform.localScale = Vector3.one;
     }
 }

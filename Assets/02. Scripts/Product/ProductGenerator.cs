@@ -12,6 +12,8 @@ public class ProductGenerator : ProductHolder, IProductSource, IProvidesProductT
     public bool autoStart = true;
     public float startDelay = 0f;
 
+    [SerializeField] private string explicitPoolKey;
+    
     public ProductType Type => product;
     private Coroutine _loop;
 
@@ -31,8 +33,6 @@ public class ProductGenerator : ProductHolder, IProductSource, IProvidesProductT
     private void OnEnable()
     {
         OnAmountChanged += SyncToStock;
-        SyncToStock(Peek());
-        if (autoStart && product != null) _loop = StartCoroutine(SpawnLoop());
     }
 
     private void OnDisable()
@@ -43,6 +43,12 @@ public class ProductGenerator : ProductHolder, IProductSource, IProvidesProductT
         while (_visuals.Count > 0) Despawn(_visuals.Dequeue());
     }
 
+    private void Start()
+    {
+        SyncToStock(Peek());
+        if (autoStart && product != null) _loop = StartCoroutine(SpawnLoop());
+    }
+    
     private IEnumerator SpawnLoop()
     {
         if (startDelay > 0f) yield return new WaitForSeconds(startDelay);
@@ -82,11 +88,11 @@ public class ProductGenerator : ProductHolder, IProductSource, IProvidesProductT
 
     private GameObject SpawnOnePhys()
     {
-        Vector3 startPos = spawnPoint ? spawnPoint.position : transform.position;
+        Vector3 startPos = spawnPoint.position;
+        
         var go = PoolManager.Instance.Spawn(PoolKey, startPos, Quaternion.identity, null);
-
         var rb = go.GetComponent<Rigidbody>();
-
+        
         Vector3 local = new Vector3(Random.Range(-boxHalfSize.x, boxHalfSize.x), 0f, Random.Range(-boxHalfSize.y, boxHalfSize.y));
         Vector3 target = boxRoot ? boxRoot.TransformPoint(local) : startPos;
         Vector3 dir = (target - startPos).normalized;
