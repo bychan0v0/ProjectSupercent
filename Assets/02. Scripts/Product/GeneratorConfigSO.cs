@@ -2,8 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Bakery/GeneratorConfig")]
-public class GeneratorConfig : ScriptableObject
+[CreateAssetMenu(menuName = "Bakery/GeneratorConfigSO")]
+public class GeneratorConfigSO : ScriptableObject
 {
     [Header("What to generate")]
     public ProductType productType;
