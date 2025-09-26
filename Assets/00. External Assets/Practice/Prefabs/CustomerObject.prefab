@@ -41,6 +41,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1264810749676605322}
   - component: {fileID: 1264810749676605324}
+  - component: {fileID: 7028496750055800996}
   - component: {fileID: 1264810749676605323}
   - component: {fileID: 1264810749676605321}
   - component: {fileID: 1264810749676605320}
@@ -90,7 +91,20 @@ NavMeshAgent:
   m_Height: 2
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 4
+  m_ObstacleAvoidanceType: 0
+--- !u!114 &7028496750055800996
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1264810749676605318}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 205d7ba114bce59498a481c621714772, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  poolKey: 
 --- !u!114 &1264810749676605323
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114,6 +128,7 @@ MonoBehaviour:
   maxShelfWaitSeconds: -1
   transfer: {fileID: 1264810749676605320}
   carrierBehaviour: {fileID: 1264810749676605323}
+  bagHoldParent: {fileID: 1264810748558851223}
 --- !u!114 &1264810749676605321
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -146,12 +161,13 @@ MonoBehaviour:
   forbidPickupFromSinks: 1
   pickupMask:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 128
   dropMask:
     serializedVersion: 2
-    m_Bits: 64
-  interval: 0.5
+    m_Bits: 128
+  interval: 0.25
   antiBounceSeconds: 0.5
+  dropToShelfProfile: {fileID: 11400000, guid: 798cc95b62e480442b00af37d1228302, type: 2}
 --- !u!114 &1264810749676605319
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -167,9 +183,13 @@ MonoBehaviour:
   frontAnchor: {fileID: 1264810748558851223}
   stackRoot: {fileID: 1264810748558851223}
   spacing: 0.35
-  suckDuration: 0.15
-  snapDuration: 0.1
   stackedLocalEuler: {x: 0, y: 90, z: 0}
+  stackDuration: 0.16
+  baseJumpHeight: 0.25
+  stackEase: 9
+  useBezierOneHop: 0
+  bezierHeight: 0.35
+  anchorInfluence: 0.5
 --- !u!1001 &1264810749859215586
 PrefabInstance:
   m_ObjectHideFlags: 0

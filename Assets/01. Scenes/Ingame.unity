@@ -219,6 +219,7 @@ Transform:
   - {fileID: 1909390455}
   - {fileID: 935360441}
   - {fileID: 2046030370}
+  - {fileID: 1338255235}
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -973,7 +974,8 @@ GameObject:
   - component: {fileID: 559722659}
   - component: {fileID: 559722660}
   - component: {fileID: 559722661}
-  m_Layer: 0
+  - component: {fileID: 559722662}
+  m_Layer: 6
   m_Name: PlayerObject
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1072,12 +1074,13 @@ MonoBehaviour:
   forbidPickupFromSinks: 1
   pickupMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 128
   dropMask:
     serializedVersion: 2
-    m_Bits: 4294967295
-  interval: 0.5
+    m_Bits: 128
+  interval: 0.25
   antiBounceSeconds: 0.5
+  dropToShelfProfile: {fileID: 11400000, guid: 798cc95b62e480442b00af37d1228302, type: 2}
 --- !u!114 &559722661
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1093,9 +1096,26 @@ MonoBehaviour:
   frontAnchor: {fileID: 292390792}
   stackRoot: {fileID: 292390792}
   spacing: 0.35
-  suckDuration: 0.15
-  snapDuration: 0.1
   stackedLocalEuler: {x: 0, y: 90, z: 0}
+  stackDuration: 0.16
+  baseJumpHeight: 0.25
+  stackEase: 9
+  useBezierOneHop: 0
+  bezierHeight: 0.35
+  anchorInfluence: 0.5
+--- !u!114 &559722662
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 559722654}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf58f89f68af57c42bd03f0386238f8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gold: 0
 --- !u!1 &583452939
 GameObject:
   m_ObjectHideFlags: 0
@@ -1857,7 +1877,7 @@ GameObject:
   - component: {fileID: 935360443}
   - component: {fileID: 935360442}
   - component: {fileID: 935360444}
-  m_Layer: 6
+  m_Layer: 7
   m_Name: CroissantShelf
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2517,6 +2537,82 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   target: {fileID: 559722657}
   distance: 17.5
+--- !u!1 &1338255234
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1338255235}
+  - component: {fileID: 1338255237}
+  - component: {fileID: 1338255236}
+  m_Layer: 7
+  m_Name: MoneyPos
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1338255235
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1338255234}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -2.5, y: 0.5, z: -4}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 152616740}
+  m_RootOrder: 6
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1338255236
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1338255234}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7f337bda0d148b4aa668d6126c4eb29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gridAnchor: {fileID: 1338255235}
+  parentForBills: {fileID: 1338255235}
+  cols: 3
+  rows: 3
+  cellSize: {x: 0.75, y: 0.45}
+  layerHeight: 0.2
+  valuePerBill: 5
+  cashPoolKey: CashBill
+  riseDistance: 0.25
+  riseDuration: 0.25
+  riseEase: 9
+  useScaleRise: 1
+  yawDeg: 90
+  playerLayers:
+    serializedVersion: 2
+    m_Bits: 64
+  perBillStagger: 0.02
+  toPlayerProfile: {fileID: 11400000, guid: 798cc95b62e480442b00af37d1228302, type: 2}
+--- !u!65 &1338255237
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1338255234}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 1
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Size: {x: 2, y: 1, z: 1}
+  m_Center: {x: 0.75, y: 0, z: 0.5}
 --- !u!65 &1374120954
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -2971,6 +3067,37 @@ Transform:
   m_Father: {fileID: 935360441}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1901882271
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1901882272}
+  m_Layer: 7
+  m_Name: BagPos
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1901882272
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1901882271}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.25, y: 1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2046030370}
+  m_RootOrder: 3
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1909390454
 GameObject:
   m_ObjectHideFlags: 0
@@ -2982,7 +3109,7 @@ GameObject:
   - component: {fileID: 1909390455}
   - component: {fileID: 1909390458}
   - component: {fileID: 1909390457}
-  m_Layer: 6
+  m_Layer: 7
   m_Name: CroissantGen
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3359,7 +3486,10 @@ MonoBehaviour:
     initialSize: 8
   - key: Customer
     prefab: {fileID: 1264810749676605318, guid: 92e97cc617c5ace48bfd1fc7b5452a45, type: 3}
-    initialSize: 8
+    initialSize: 4
+  - key: CashBill
+    prefab: {fileID: 1021405347015165638, guid: da216f1f776aa4cc384a914e3c97fc56, type: 3}
+    initialSize: 20
 --- !u!4 &2023086361
 Transform:
   m_ObjectHideFlags: 0
@@ -3418,7 +3548,8 @@ GameObject:
   - component: {fileID: 2046030371}
   - component: {fileID: 2046030372}
   - component: {fileID: 2046030373}
-  m_Layer: 6
+  - component: {fileID: 2046030374}
+  m_Layer: 7
   m_Name: POS
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3440,6 +3571,7 @@ Transform:
   - {fileID: 543450653409250274}
   - {fileID: 543450652152827356}
   - {fileID: 963812476}
+  - {fileID: 1901882272}
   m_Father: {fileID: 152616740}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -3473,6 +3605,7 @@ MonoBehaviour:
   direction: {x: 0, y: 0, z: -1}
   spacing: 1.5
   serviceTimeRange: {x: 1.2, y: 2}
+  serviceStartRadius: 0.25
 --- !u!114 &2046030373
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3485,8 +3618,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f218df82b5119346a939f5fb54427f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerLayers:
+    serializedVersion: 2
+    m_Bits: 64
+  checkoutVfx: {fileID: 2046030374}
+  bagToHandProfile: {fileID: 11400000, guid: 798cc95b62e480442b00af37d1228302, type: 2}
   serviceSeconds: 1
   lane: {fileID: 2046030372}
+  priceTable:
+  - product: {fileID: 11400000, guid: 929223723aa1f4844b0362f5982c4537, type: 2}
+    unitPrice: 10
+  moneyStacker: {fileID: 1338255236}
+--- !u!114 &2046030374
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046030369}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2eb574b3a0ea21b42adf299b8d10ed50, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bagSpawnAnchor: {fileID: 1901882272}
+  bagPrefab: {fileID: 1475244874789685451, guid: 5f3a83b985d174ecf846edb7c0a3b4ae, type: 3}
+  bagMouthOffset: {x: 0, y: 0.25, z: 0}
+  dropToBagProfile: {fileID: 11400000, guid: 798cc95b62e480442b00af37d1228302, type: 2}
+  bagToHandProfile: {fileID: 11400000, guid: 798cc95b62e480442b00af37d1228302, type: 2}
+  perItemDelay: 0.05
 --- !u!1 &2057545875
 GameObject:
   m_ObjectHideFlags: 0

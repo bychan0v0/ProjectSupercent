@@ -12,6 +12,9 @@ public sealed class CheckoutLane : MonoBehaviour
     [Header("Service Time (sec)")]
     [SerializeField] private Vector2 serviceTimeRange = new Vector2(1.2f, 2.0f);
 
+    [Header("Service Gate")]
+    [SerializeField, Min(0f)] private float serviceStartRadius = 0.25f;
+    
     private readonly List<CustomerAgent> _queue = new();
 
     /// <summary>줄에 합류시키고 자신의 인덱스를 반환</summary>
@@ -23,16 +26,16 @@ public sealed class CheckoutLane : MonoBehaviour
         return _queue.Count - 1;
     }
 
-    /// <summary>목표 지점에 도착했음을 알림(맨 앞이면 결제 시작)</summary>
+    public CustomerAgent PeekFront()
+    {
+        if (_queue.Count == 0) return null;
+        return _queue[0];
+    }
+    
     public void NotifyArrived(CustomerAgent who)
     {
         if (_queue.Count == 0 || who == null) return;
-
-        // 자동 결제 금지
-        // 맨 앞이어도 여기서는 아무 것도 하지 않음
-
-        // 대기열 정렬은 유지 (앞사람이 살짝 움직여도 다시 맞춰줌)
-        RefreshDestinations();
+        RefreshDestinations(); // 자동 결제 금지 – 정렬만
     }
 
     /// <summary>현 대기열의 각 손님 목적지를 재배치</summary>
@@ -62,10 +65,36 @@ public sealed class CheckoutLane : MonoBehaviour
         }
     }
     
-    public CustomerAgent PeekFront()
+    public bool IsFrontReadyForService(out CustomerAgent who)
     {
-        if (_queue.Count == 0) return null;
-        return _queue[0];
+        who = PeekFront();
+        if (who == null || who.Servicing) return false;
+
+        Transform a = anchor ? anchor : transform;
+        float r2 = serviceStartRadius * serviceStartRadius;
+        return (who.transform.position - a.position).sqrMagnitude <= r2;
+    }
+    
+    public bool TryStartServiceForFront(float duration, System.Action<CustomerAgent> onCompleted)
+    {
+        if (_queue.Count == 0) return false;
+        var who = _queue[0];
+        if (who == null || who.Servicing) return false;
+
+        Transform a = anchor ? anchor : transform;
+        float r2 = serviceStartRadius * serviceStartRadius;
+        if ((who.transform.position - a.position).sqrMagnitude > r2)
+            return false;
+
+        // 여기서만 결제 시작
+        who.StartService(duration, () =>
+        {
+            if (_queue.Count > 0 && _queue[0] == who) _queue.RemoveAt(0);
+            RefreshDestinations();
+            onCompleted?.Invoke(who);
+            who.DoneAndExit();
+        });
+        return true;
     }
 
 #if UNITY_EDITOR

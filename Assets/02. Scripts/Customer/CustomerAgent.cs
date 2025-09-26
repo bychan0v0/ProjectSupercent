@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -15,15 +14,11 @@ public class CustomerAgent : MonoBehaviour
         WaitingPickup,
         ToCheckout,
         InQueue,
-        ExitToAnchor,  // (spawn + enterOffset)까지
-        ExitBeyond     // spawn 포인트까지
+        ExitToAnchor,
+        ExitBeyond
     }
 
     public enum GoalType { None, Enter, ShelfSlot, CheckoutSlot, ExitAnchor, ExitFinal }
-
-    [Header("Pooling")]
-    [SerializeField] private string poolKey = "Customer";
-    public string PoolKey => poolKey;
 
     [Header("Move")]
     [SerializeField] private NavMeshAgent agent;
@@ -38,15 +33,17 @@ public class CustomerAgent : MonoBehaviour
     [Header("Flow - Enter")]
     [SerializeField] private Vector3 enterOffset = new Vector3(0f, 0f, -4f);
 
-    [Header("Shelf Wait Options")]
-    [SerializeField] private bool waitWhenOutOfStock = true; // 재고 0일 때 기다릴지
+    [Header("Pickup Loop")]
     [SerializeField, Min(0.05f)] private float restockCheckInterval = 0.4f; // 재고 재확인 주기
-    [SerializeField] private float maxShelfWaitSeconds = -1f; // -1이면 무제한 대기, 0이면 즉시 포기
-    
+
     [Header("Components")]
     [SerializeField] private AutoItemTransfer transfer;          // 고객은 Manual 모드 권장
-    [SerializeField] private MonoBehaviour carrierBehaviour;     // IProductCarrier
+    [SerializeField] private MonoBehaviour carrierBehaviour;     // IProductCarrier 구현체
     private IProductCarrier carrier;
+
+    [Header("Visual Anchors")]
+    [SerializeField] private Transform bagHoldParent;            // 봉투가 붙을 손님 자식(상품 position)
+    public Transform BagHoldParent => bagHoldParent ? bagHoldParent : transform;
 
     // ===== Runtime =====
     private State state = State.None;
@@ -56,7 +53,6 @@ public class CustomerAgent : MonoBehaviour
     private Transform myShelfSlot;
     private CheckoutLane lane;
 
-    // 퇴장 경로 계산을 위해 스폰 위치 저장
     private Vector3 spawnWorld;
     private bool hasSpawnWorld = false;
 
@@ -92,6 +88,11 @@ public class CustomerAgent : MonoBehaviour
     {
         if (shelf && myShelfSlot) shelf.Release(myShelfSlot);
         myShelfSlot = null;
+
+        // 재사용 안전: 봉투/비주얼 정리 + (옵션) 들고 있던 물건 비우기
+        CleanupCarriedBags();
+        if (wantProduct) WipeCarryOf(wantProduct);
+
         OnReturnedToPool = null; // 리스너 정리
     }
 
@@ -104,18 +105,19 @@ public class CustomerAgent : MonoBehaviour
     }
 
     /// <summary>
-    /// 손님 이동 플로우 시작.
-    /// 스폰 포인트와 enterOffset을 기억해두고, 퇴장 시 그 반대로 나간다.
+    /// 손님 이동 플로우 시작. 재사용 시 빈손 보장.
     /// </summary>
     public void Begin(ShelfWaitingArea targetShelf, CheckoutLane targetLane, Vector3 spawnPos)
     {
         shelf = targetShelf;
         lane  = targetLane;
 
+        // 재사용 시작 시 이번에 살 품목은 무조건 빈손으로 시작
+        if (wantProduct) WipeCarryOf(wantProduct);
+
         spawnWorld = spawnPos;
         hasSpawnWorld = true;
 
-        // 1) 스폰 → (spawn + enterOffset)로 입장
         Vector3 enterAnchor = spawnWorld + enterOffset;
         SetGoal(enterAnchor, GoalType.Enter);
         state = State.EnterWalk;
@@ -151,7 +153,7 @@ public class CustomerAgent : MonoBehaviour
                         }
                         else
                         {
-                            GoExit(); // 슬롯이 꽉 찼으면 바로 퇴장
+                            GoExit(); // 슬롯이 꽉 찼으면 퇴장
                         }
                     }
                     break;
@@ -187,7 +189,6 @@ public class CustomerAgent : MonoBehaviour
                 {
                     if (Arrived())
                     {
-                        // 2) (spawn + enterOffset)에 도착했으니, 이제 spawn 포인트로 직진
                         SetGoal(spawnWorld, GoalType.ExitFinal);
                         state = State.ExitBeyond;
                     }
@@ -199,7 +200,7 @@ public class CustomerAgent : MonoBehaviour
                     if (Arrived())
                     {
                         OnReturnedToPool?.Invoke(this);
-                        PoolManager.Instance.Despawn(poolKey, gameObject);
+                        PoolManager.Instance.Despawn(gameObject);
                         yield break;
                     }
                     break;
@@ -226,29 +227,27 @@ public class CustomerAgent : MonoBehaviour
             yield break;
         }
 
-        // 1) 내 차례가 올 때까지 대기
+        // 1) 내 차례 대기
         yield return new WaitUntil(() => shelf.IsMyTurnNow(this));
 
-        // 2) 서비스 락 획득 (여기서부터는 내가 EndService할 때까지 남들 진입 불가)
+        // 2) 서비스 락 획득
         while (!shelf.TryBeginService(this))
             yield return null;
 
-        // 3) 원하는 개수 채울 때까지 "자리를 지키며" 반복 픽업/대기
+        // 3) 원하는 개수 채울 때까지 같은 자리에서 반복 픽업
         while (carrier.Count(wantProduct) < wantCount)
         {
-            int need = wantCount - carrier.Count(wantProduct);
-            int carry = carrier.CapacityLeft; // 캐리어 남은 용량
+            int need  = wantCount - carrier.Count(wantProduct);
+            int carry = carrier.CapacityLeft;
             if (carry <= 0)
             {
-                Debug.LogWarning($"[CustomerAgent] Carrier capacity exhausted before meeting demand ({wantCount}).",
-                    this);
-                break; // 더 못 들면 루프 탈출(설계상 캐리어 용량 >= 최대요구 권장)
+                Debug.LogWarning($"[CustomerAgent] Carrier capacity exhausted before meeting demand ({wantCount}).", this);
+                break;
             }
 
-            int avail = shelf.Source.Peek(wantProduct); // 선반 재고
+            int avail = shelf.Source.Peek(wantProduct);
             if (avail <= 0)
             {
-                // 재고 들어올 때까지 "내 순서 유지"한 채로 대기
                 yield return new WaitForSeconds(restockCheckInterval);
                 continue;
             }
@@ -256,17 +255,16 @@ public class CustomerAgent : MonoBehaviour
             int steps = Mathf.Min(need, avail, carry);
             for (int s = 0; s < steps; s++)
             {
-                transfer.ManualPickup(shelf.Source, wantProduct, 1); // ★ 항상 1개씩
+                transfer.ManualPickup(shelf.Source, wantProduct, 1); // 1개씩
                 yield return new WaitUntil(() => transfer.IsBusy == false);
                 yield return new WaitForSeconds(restockCheckInterval);
-                // 루프 재평가 → need가 남으면 같은 락으로 계속 시도
             }
         }
 
-        // 4) 서비스 종료(락 해제)
+        // 4) 서비스 종료
         shelf.EndService(this);
 
-        // 5) 다 모았으면 슬롯 해제 후 계산대로
+        // 5) 계산대로 or 퇴장
         if (carrier.Count(wantProduct) >= wantCount)
         {
             if (myShelfSlot) shelf.Release(myShelfSlot);
@@ -275,46 +273,38 @@ public class CustomerAgent : MonoBehaviour
         }
         else
         {
-            // 이 경우는 보통 "캐리어 용량이 부족"한 설계 오류.
-            // 최소한 자리만 해제하고 퇴장시켜 deadlock 방지(원하면 계산대로 보내도록 바꿔도 됨).
             if (myShelfSlot) shelf.Release(myShelfSlot);
             myShelfSlot = null;
             GoExit();
         }
     }
-    
+
     public void SetQueueDestination(Vector3 world)
     {
-        if (!agent) agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
-
-        // 줄 설 땐 최대한 정확히 붙기
-        agent.stoppingDistance = 0.02f;   // 거의 0에 가깝게
-        agent.autoBraking      = true;    // 목적지 근처에서 속도 줄이기
-
+        if (!agent) agent = GetComponent<NavMeshAgent>();
+        agent.stoppingDistance = 0.02f;
+        agent.autoBraking = true;
         SetGoal(world, GoalType.CheckoutSlot);
+    }
+
+    private void ToCheckout()
+    {
+        if (lane == null)
+        {
+            Debug.LogWarning("[CustomerAgent] ToCheckout() called but lane is null. Exiting instead.", this);
+            GoExit();
+            return;
+        }
+
+        // 줄 합류: CheckoutLane이 내 대기 위치를 배정(SetQueueDestination 호출)
+        state = State.InQueue;
+        lane.Join(this);
     }
     
     public void BeginCheckoutByPlayer(float serviceSeconds)
     {
-        // 이미 결제 중이면 무시
         if (Servicing) return;
-
-        // 플레이어가 결제 시작을 눌렀을 때만 서비스 진행
-        StartService(serviceSeconds, () =>
-        {
-            // 계산 끝 → 퇴장
-            DoneAndExit();
-        });
-    }
-    
-    private void ToCheckout()
-    {
-        // 바로 줄에 합류시키고, CheckoutLane이 목적지를 배정해주도록 한다.
-        state = State.InQueue;
-        if (lane != null)
-        {
-            lane.Join(this); // Join()이 RefreshDestinations()를 호출하며 내 목적지도 설정해줌
-        }
+        StartService(serviceSeconds, () => { DoneAndExit(); });
     }
 
     // ===== 결제/퇴장 =====
@@ -333,26 +323,71 @@ public class CustomerAgent : MonoBehaviour
         onDone?.Invoke();
     }
 
-    public void DoneAndExit()
-    {
-        GoExit();
-    }
+    public void DoneAndExit() => GoExit();
 
     private void GoExit()
     {
         if (hasSpawnWorld)
         {
-            // 퇴장: (spawn + enterOffset) → spawn
             Vector3 anchor = spawnWorld + enterOffset;
             SetGoal(anchor, GoalType.ExitAnchor);
             state = State.ExitToAnchor;
         }
         else
         {
-            // 혹시 스폰 정보가 없다면, 현재 위치에서 enterOffset의 반대 방향으로 탈출
             Vector3 fallback = transform.position - (enterOffset.normalized * enterOffset.magnitude);
             SetGoal(fallback, GoalType.ExitFinal);
             state = State.ExitBeyond;
+        }
+    }
+
+    // ===== 정리/보조 =====
+
+    /// <summary>봉투(손님 자식) 모두 정리</summary>
+    private void CleanupCarriedBags()
+    {
+        Transform root = BagHoldParent ? BagHoldParent : transform;
+        var bags = root.GetComponentsInChildren<CarriedBag>(includeInactive: true);
+
+        for (int i = 0; i < bags.Length; i++)
+        {
+            var go = bags[i].gameObject;
+
+            DG.Tweening.DOTween.Kill(go.transform, complete: false);
+            go.transform.SetParent(null, true);
+
+            var po = go.GetComponent<PooledObject>();
+            if (po != null && PoolManager.Instance != null)
+                PoolManager.Instance.Despawn(go);
+            else
+                Destroy(go);
+        }
+    }
+
+    /// <summary>현재 수요 품목을 빈손으로 보장(논리+비주얼)</summary>
+    private void WipeCarryOf(ProductType type)
+    {
+        if (type == null || carrier == null) return;
+
+        // 비주얼 스택 비우기
+        if (TryGetComponent<StackCarrier>(out var stack))
+        {
+            while (carrier.Count(type) > 0)
+            {
+                if (!carrier.TryRemoveOne(type)) break;
+                var go = stack.PopTop();
+                if (go)
+                {
+                    var po = go.GetComponent<PooledObject>();
+                    if (po != null && PoolManager.Instance != null) PoolManager.Instance.Despawn(go);
+                    else Destroy(go);
+                }
+            }
+        }
+        else
+        {
+            while (carrier.Count(type) > 0)
+                if (!carrier.TryRemoveOne(type)) break;
         }
     }
 }

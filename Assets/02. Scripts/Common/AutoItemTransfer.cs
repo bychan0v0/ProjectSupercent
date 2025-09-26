@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 public sealed class AutoItemTransfer : MonoBehaviour
@@ -23,6 +24,8 @@ public sealed class AutoItemTransfer : MonoBehaviour
     [SerializeField, Min(0.05f)] private float interval = 0.1f;
     [SerializeField, Min(0f)]    private float antiBounceSeconds = 0.5f; // 방금 내려놓은 선반에서 재픽업 금지 시간
 
+    [SerializeField] private ItemTravelProfile dropToShelfProfile;
+    
     private IProductCarrier _carrier;
 
     // 범위 내 대상들
@@ -170,12 +173,12 @@ public sealed class AutoItemTransfer : MonoBehaviour
                 Vector3 to = shelf.GetNextSlotWorldPos();
 
                 // 짧은 흡착 이동 후 선반에 고정
-                StartCoroutine(MoveThenPlace(go, to, 0.12f, () =>
+                var seq = ItemTravelTween.ArcMove(go.transform, to, dropToShelfProfile);
+                seq.OnComplete(() =>
                 {
                     shelf.AcceptFromHand(go);
-                    // 3) 싱크에 저장(숫자 증가)
                     sink.TryStore(type, 1);
-                }));
+                });
             }
             else
             {
@@ -195,23 +198,6 @@ public sealed class AutoItemTransfer : MonoBehaviour
             return true;
         }
         return false;
-    }
-
-    private IEnumerator MoveThenPlace(GameObject go, Vector3 to, float dur, System.Action onArrive)
-    {
-        if (!go) yield break;
-        Vector3 from = go.transform.position;
-        float t = 0f;
-        while (t < dur)
-        {
-            t += Time.deltaTime;
-            float a = Mathf.Clamp01(t / dur);
-            a = a * a * (3f - 2f * a);
-            go.transform.position = Vector3.Lerp(from, to, a);
-            yield return null;
-        }
-        go.transform.position = to;
-        onArrive?.Invoke();
     }
 
     // ====== 고객용 수동 API ======

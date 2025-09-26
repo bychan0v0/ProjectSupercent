@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -89,13 +90,29 @@ public class ProductGenerator : ProductHolder, IProductSource, IProvidesProductT
     private GameObject SpawnOnePhys()
     {
         Vector3 startPos = spawnPoint.position;
-        
+
         var go = PoolManager.Instance.Spawn(PoolKey, startPos, Quaternion.identity, null);
+        if (!go)
+        {
+            Debug.LogError($"[ProductGenerator] Spawn 실패: key={PoolKey}", this);
+            return null;
+        }
+
+        // ★ 스폰 직후 상태 리셋(이전 생애의 kinematic/콜라이더 Off/트윈 잔재 제거)
+        ResetSpawnState(go);
+
+        // 이제 물리가 살아있으니 AddForce가 정상 동작
         var rb = go.GetComponent<Rigidbody>();
-        
-        Vector3 local = new Vector3(Random.Range(-boxHalfSize.x, boxHalfSize.x), 0f, Random.Range(-boxHalfSize.y, boxHalfSize.y));
+        if (!rb)
+        {
+            Debug.LogWarning("[ProductGenerator] Rigidbody 없음. 임시로 추가합니다.", go);
+            rb = go.AddComponent<Rigidbody>(); // (원래 프리팹에 붙어 있어야 정상)
+        }
+
+        Vector3 local  = new Vector3(Random.Range(-boxHalfSize.x, boxHalfSize.x), 0f,
+            Random.Range(-boxHalfSize.y, boxHalfSize.y));
         Vector3 target = boxRoot ? boxRoot.TransformPoint(local) : startPos;
-        Vector3 dir = (target - startPos).normalized;
+        Vector3 dir    = (target - startPos).normalized;
 
         Vector3 force = dir * dropForce
                         + Vector3.up * upForce
@@ -108,7 +125,30 @@ public class ProductGenerator : ProductHolder, IProductSource, IProvidesProductT
     private void Despawn(GameObject go)
     {
         if (!go) return;
-        if (!string.IsNullOrEmpty(PoolKey)) PoolManager.Instance.Despawn(PoolKey, go);
-        else Destroy(go);
+        PoolManager.Instance.Despawn(go);
+    }
+    
+    private void ResetSpawnState(GameObject go)
+    {
+        // 트윈 잔재 제거(부모/자식 전부)
+        DOTween.Kill(go.transform, complete: false);
+        foreach (var t in go.GetComponentsInChildren<Transform>(true))
+            DOTween.Kill(t, complete: false);
+
+        // 부모 영향 제거(혹시 남아있다면)
+        go.transform.SetParent(null, true);
+
+        // 콜라이더/리지드바디 원복
+        var rbs  = go.GetComponentsInChildren<Rigidbody>(true);
+        foreach (var rb in rbs)
+        {
+            rb.isKinematic     = false;
+            rb.useGravity      = true;
+            rb.velocity        = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        var cols = go.GetComponentsInChildren<Collider>(true);
+        foreach (var c in cols) c.enabled = true;
     }
 }

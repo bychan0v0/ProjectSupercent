@@ -30,10 +30,12 @@ public class PoolManager : MonoBehaviour
         }
     }
 
-    GameObject New(Pool p)
+    public GameObject New(Pool p)
     {
         var go = Instantiate(p.prefab, transform);
         go.SetActive(false);
+        var tag = go.GetComponent<PooledObject>() ?? go.AddComponent<PooledObject>();
+        tag.poolKey = p.key;
         return go;
     }
 
@@ -47,9 +49,15 @@ public class PoolManager : MonoBehaviour
         return go;
     }
 
-    public void Despawn(string key, GameObject go)
+    public void Despawn(GameObject go)
     {
-        var p = _byKey[key];
+        var tag = go ? go.GetComponent<PooledObject>() : null;
+        if (tag == null || !_byKey.TryGetValue(tag.poolKey, out var p))
+        {
+            Debug.LogWarning("Despawn: poolKey를 찾지 못해 Destroy로 대체합니다.", go);
+            Destroy(go);
+            return;
+        }
         go.SetActive(false);
         go.transform.SetParent(transform);
         p.q.Enqueue(go);
