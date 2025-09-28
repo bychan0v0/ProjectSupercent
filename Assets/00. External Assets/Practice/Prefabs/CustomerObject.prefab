@@ -117,18 +117,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 125551171aa38314ab8642e859e8b964, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  poolKey: Customer
   agent: {fileID: 1264810749676605324}
   arriveThreshold: 0.15
   wantProduct: {fileID: 0}
   wantCount: 1
   enterOffset: {x: 0, y: 0, z: -4}
-  waitWhenOutOfStock: 1
   restockCheckInterval: 0.5
-  maxShelfWaitSeconds: -1
   transfer: {fileID: 1264810749676605320}
   carrierBehaviour: {fileID: 1264810749676605323}
   bagHoldParent: {fileID: 1264810748558851223}
+  kind: 0
+  takeoutLaneRef: {fileID: 0}
+  dineInLaneRef: {fileID: 0}
+  tableSeats: {fileID: 0}
+  eatSeconds: 3
+  tableCols: 1
+  tableRows: 1
+  tableCellSize: {x: 0, y: 0}
+  tableYOffset: 0.01
 --- !u!114 &1264810749676605321
 MonoBehaviour:
   m_ObjectHideFlags: 0

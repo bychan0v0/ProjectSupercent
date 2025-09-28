@@ -91,7 +91,9 @@ public class ProductShelf : ProductHolder,
         {
             AddInternal(put); // 데이터만 갱신(스폰/풀 없음)
             Debug.Log($"{{\"event\":\"store_to_shelf\",\"product\":\"{t.displayName}\",\"put\":{put},\"stock\":{Peek()},\"t\":{Time.time:F2}}}");
+            Analytics.Log("shelf_store", new { type = t.displayName, put, stock = Peek() });
         }
+        
         return amount - put;
     }
 
@@ -119,6 +121,7 @@ public class ProductShelf : ProductHolder,
         // 아래 RemoveInternal(give)는 네 ProductHolder에 존재한다고 가정.
         // 이름이 다르면 네 프로젝트의 감소 메서드로 바꿔줘.
         RemoveInternal(give);
+        Analytics.Log("shelf_take", new { type = p.displayName, taken });
 
         taken = give;
         return true;

@@ -142,6 +142,8 @@ public sealed class AutoItemTransfer : MonoBehaviour
             {
                 if (TryGetComponent<StackCarrier>(out var stack)) stack.AbsorbExisting(go);
             }
+            
+            Analytics.Log("auto_pick", new { type = type.displayName, carrier = _carrier?.GetHashCode() ?? 0 });
             return true;
         }
         return false;
@@ -195,6 +197,7 @@ public sealed class AutoItemTransfer : MonoBehaviour
                     _noPickupUntil[srcSameGo as Object] = Time.time + antiBounceSeconds;
             }
 
+            Analytics.Log("auto_drop", new { type = type.displayName });
             return true;
         }
         return false;

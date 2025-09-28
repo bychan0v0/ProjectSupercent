@@ -141,6 +141,8 @@ public class MoneyStacker : MonoBehaviour
             if (perBillStagger > 0f) yield return new WaitForSeconds(perBillStagger);
         }
 
+        Analytics.Log("cash_collect", new { to = target.name, count = bills.Count });
+
         // 끝
         _collecting = false;
     }
@@ -162,12 +164,16 @@ public class MoneyStacker : MonoBehaviour
     {
         if (amount <= 0) return;
         int bills = Mathf.CeilToInt(amount / (float)valuePerBill);
+        
+        Analytics.Log("cash_stack", new { bills, total_est = /* _totalBills + bills */ 0 /* 알맞게 */ });
+        
         StackBills(bills);
     }
 
     public void StackBills(int bills)
     {
         if (bills <= 0) return;
+        Analytics.Log("cash_stack", new { bills, total_est = /* _totalBills + bills */ 0 /* 알맞게 */ });
 
         var anchor = gridAnchor ? gridAnchor : transform;
         var parent = parentForBills ? parentForBills : transform;

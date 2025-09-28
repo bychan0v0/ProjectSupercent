@@ -8,12 +8,10 @@ public sealed class ShelfWaitingArea : MonoBehaviour
     public ProductType Product => product;
 
     [Header("Source (고객이 실제로 가져갈 곳)")]
-    [Tooltip("IProductSource 구현체(진열대/디스펜서 등). 비워두면 부모에서 자동 검색 시도.")]
     [SerializeField] private MonoBehaviour sourceObject;
     public IProductSource Source { get; private set; }
 
     [Header("Slots (Manual Only)")]
-    [Tooltip("여기에 직접 배치한 슬롯 Transform들을 넣어주세요.")]
     [SerializeField] private Transform[] slots = System.Array.Empty<Transform>();
     public Transform[] Slots => slots;
 
@@ -90,16 +88,12 @@ public sealed class ShelfWaitingArea : MonoBehaviour
         Enqueue(who);
     }
 
-    public void Release(Transform slot)
+    public void Release(Transform slot, CustomerAgent who = null)
     {
         if (!slot) return;
-        _reserved.Remove(slot);
-        if (_occupied.ContainsKey(slot))
-        {
-            CustomerAgent who = _occupied[slot];
-            _occupied[slot] = null;
-            if (who != null) RemoveFromQueue(who);
-        }
+        if (who != null && _occupied.TryGetValue(slot, out var owner) && owner != who)
+            return; // 남의 슬롯이면 무시(안전)
+        _occupied.Remove(slot);
     }
 
     public void CancelReserve(Transform slot)
@@ -128,7 +122,7 @@ public sealed class ShelfWaitingArea : MonoBehaviour
 
     public void EndService(CustomerAgent who)
     {
-        if (ReferenceEquals(_serving, who)) _serving = null;
+        if (_serving == who) _serving = null;
     }
 
     public void Requeue(CustomerAgent who)

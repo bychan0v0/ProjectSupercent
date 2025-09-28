@@ -34,9 +34,9 @@ public class CheckoutCounter : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (!IsPlayer(other)) return;
-
+        
         _playerContacts.Add(other);
-        if (loop == null) loop = StartCoroutine(CoServiceWhileAnyPlayerInside(other));
+        if (loop == null) loop = StartCoroutine(CoServiceWhileAnyPlayerInside());
     }
 
     private void OnTriggerExit(Collider other)
@@ -59,50 +59,62 @@ public class CheckoutCounter : MonoBehaviour
         return (playerLayers.value & (1 << root.layer)) != 0;
     }
 
-    private IEnumerator CoServiceWhileAnyPlayerInside(Collider lastEntered)
+    private IEnumerator CoServiceWhileAnyPlayerInside()
     {
         while (_playerContacts.Count > 0)
         {
-            if (!busyOne && lane != null && lane.IsFrontReadyForService(out var front))
+            if (!busyOne && lane != null && lane.IsFrontReadyForService(out var front)) // ← Lane의 준비 판정만 사용
             {
                 if (front != null && !front.Servicing)
                 {
-                    // 1) 이 손님이 실제로 들고 있는 개수 (StackCarrier 사용 권장)
+                    // 1) 실제 들고있는 개수(스택 기준으로 캡쳐)
                     var stack = front.GetComponent<StackCarrier>();
                     int count = stack != null ? stack.Count : front.WantCount;
 
-                    // 2) VFX 길이 계산
-                    float vfxSec = checkoutVfx.EstimateDuration(count);
+                    // 2) VFX 총 길이로 서비스 시간 동기화
+                    float vfxSec = checkoutVfx ? checkoutVfx.EstimateDuration(count) : serviceSeconds;
 
-                    // 3) 결제 시작을 먼저 시도 → 성공한 경우에만 VFX 시작
+                    Analytics.Log("counter_service", new {
+                        count,
+                        unitPrice = GetUnitPrice(front.WantProduct),
+                        revenue = Mathf.Max(0, GetUnitPrice(front.WantProduct) * count)
+                    });
+                    
+                    // 3) 결제 시작 (완료 콜백: 돈/판매량 처리)
                     bool started = lane.TryStartServiceForFront(vfxSec, who =>
                     {
-                        int unit = GetUnitPrice(who.WantProduct);
+                        int unit    = GetUnitPrice(who.WantProduct);
                         int revenue = Mathf.Max(0, unit * count);
-
-                        // ★ 플레이어 지갑 X → 지폐 쌓기 O
-                        if (moneyStacker != null)
-                        {
-                            // moneyStacker.ValuePerBill = valuePerBill; // 전역으로 쓰려면 1회 설정
-                            moneyStacker.StackAmount(revenue);
-                        }
+                        
+                        SalesTracker.ReportSale(who.WantProduct, count, revenue);
+                        if (moneyStacker) moneyStacker.StackAmount(revenue);
                     });
 
-                    if (started)
+                    // 4) 시작되면 즉시 봉투 연출 실행
+                    if (started && checkoutVfx)
                     {
-                        busyOne = true; // ★ 재진입 잠금
+                        // 스택에서 실물 하나 꺼내오기(없으면 null)
+                        System.Func<GameObject> popOne = () => stack ? stack.PopTop() : null;
 
-                        // Pop/Consume 설정
-                        GameObject PopOne() => stack ? stack.PopTop() : null;
-                        void Consume(GameObject go)
+                        // 봉투에 들어간 직후 풀 회수(풀 없으면 Destroy)
+                        System.Action<GameObject> onConsumeOne = go =>
                         {
                             if (!go) return;
-                            PoolManager.Instance.Despawn(go); // PooledObject 방식 권장
-                        }
+                            var po = go.GetComponent<PooledObject>();
+                            if (po != null && PoolManager.Instance != null) PoolManager.Instance.Despawn(go);
+                            else Destroy(go);
+                        };
 
-                        // 4) 이제서야 VFX 시작 (아이템 → 봉투 → 손님 position 자식)
-                        checkoutVfx.Play(front, count, PopOne, Consume, () => busyOne = false);
+                        checkoutVfx.Play(
+                            who: front,
+                            itemCount: count,
+                            popOneVisual: popOne,
+                            onConsumeOne: onConsumeOne,
+                            onAllDone: null
+                        );
                     }
+
+                    if (started) { busyOne = true; yield return null; busyOne = false; }
                 }
             }
             yield return null;

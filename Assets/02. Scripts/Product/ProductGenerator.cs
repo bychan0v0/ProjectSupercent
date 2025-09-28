@@ -84,7 +84,11 @@ public class ProductGenerator : ProductHolder, IProductSource, IProvidesProductT
     
     private void SyncToStock(int targetCount)
     {
-        while (_visuals.Count < targetCount) _visuals.Enqueue(SpawnOnePhys());
+        while (_visuals.Count < targetCount)
+        {
+            _visuals.Enqueue(SpawnOnePhys());
+            Analytics.Log("generator_sync", new { type = product.displayName, stock = targetCount });
+        }
     }
 
     private GameObject SpawnOnePhys()
