@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
@@ -21,10 +22,11 @@ public class UnlockZone : MonoBehaviour
     [SerializeField] private float spawnYawDeg = 90f;
 
     [Header("Result")]
+    [SerializeField] private GameObject[] disableWalls;
     [SerializeField] private UnlockableArea areaToUnlock;
 
-    public System.Action OnPaymentStarted;
-    public System.Action OnUnlocked;
+    public Action OnPaymentStarted;
+    public Action OnUnlocked;
 
     private readonly HashSet<Collider> _players = new();
     private bool _paying = false;
@@ -74,15 +76,19 @@ public class UnlockZone : MonoBehaviour
             var seq = ItemTravelTween.ArcMove(bill.transform, payTarget.position, toZoneProfile);
             seq.OnComplete(() =>
             {
-                wallet.Add(-pay);       // 지갑 차감
+                int spent = wallet.SpendUpTo(pay);   // ← PlayerWallet에 이미 추가해 둔 메서드 사용
                 DespawnOrDestroy(bill);
-                _paid += pay;
+                
+                if (spent <= 0) return;              // 돈이 없으면 진행 X
+
+                _paid += spent;
 
                 if (_paid >= totalCost)
                 {
+                    foreach (var c in disableWalls) if (c) c.SetActive(false);
                     areaToUnlock?.Unlock();
                     OnUnlocked?.Invoke();
-                    // 필요하면 이 존 비활성: GetComponent<Collider>().enabled = false;
+                    // (옵션) GetComponent<Collider>().enabled = false;
                 }
             });
 

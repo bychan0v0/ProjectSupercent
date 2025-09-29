@@ -67,6 +67,16 @@ public class CustomerAgent : MonoBehaviour
     [SerializeField] private Vector2 tableCellSize = new Vector2(0.16f, 0.12f);
     [SerializeField] private float tableYOffset = 0.01f;         // 테이블 표면에서 살짝 띄우기
 
+    [Header("Dining – Table Drop/Trash/Cash")]
+    [SerializeField, Min(0.0f)] private float tableLayerHeight = 0.06f;   // 층 간 높이
+    [SerializeField] private Vector3 trashLocalOffset = new Vector3(0f, 0.01f, -0.15f);
+    [SerializeField] private GameObject trashPrefab;                       // 테이블 위에 남길 쓰레기
+    [SerializeField] private MoneyStacker dineInMoneyStacker; // 씬에 있는 걸 주입받아 사용
+
+    // 내부 집계용
+    private int reservedUnitPrice;
+    private int dineInPlacedCount = 0;  // 테이블에 실제 올린 개수
+    
     // ===== Runtime =====
     private State state = State.None;
     private GoalType currentGoal = GoalType.None;
@@ -162,7 +172,15 @@ public class CustomerAgent : MonoBehaviour
     {
         if (IsDineIn)
         {
-            // 좌석 예약 시도
+            // ── 계산대에서 미리 좌석을 예약해줬다면 여기서 바로 테이블로 이동
+            if (mySeatAnchor)
+            {
+                SetGoal(mySeatAnchor.position, GoalType.None);
+                state = State.Eating_GoToSeat;
+                return;
+            }
+
+            // ── (기존 로직) 예약이 안됐다면 여기서 시도
             if (tableSeats && tableSeats.TryReserve(out mySeatAnchor, out myTablePlace, this) && mySeatAnchor)
             {
                 SetGoal(mySeatAnchor.position, GoalType.None);
@@ -170,12 +188,13 @@ public class CustomerAgent : MonoBehaviour
             }
             else
             {
-                // 만석이면 테이크아웃처럼 퇴장
+                // 만석이면(정상 플로우라면 거의 없음) 퇴장 처리
                 DoneAndExit();
             }
         }
         else
         {
+            // 테이크아웃은 기존대로
             DoneAndExit();
         }
     }
@@ -405,60 +424,56 @@ public class CustomerAgent : MonoBehaviour
     // ===== Dining Helpers =====
     private void PlaceCarryOnTable()
     {
-        if (!myTablePlace || carrier == null) return;
+        if (!myTablePlace || carrier == null || wantProduct == null) return;
 
-        // 스택 비주얼/실물에서 하나씩 꺼내 테이블에 내려놓는다.
+        // 테이블 표면 그리드 파라미터
+        int perLayer = Mathf.Max(1, tableCols * tableRows);
+        int total    = carrier.Count(wantProduct);   // 가진 만큼 전부 올린다
+        if (total <= 0) return;
+
+        // 목표 좌표들 생성: 여러 '층'
+        var targets = new List<Vector3>(total);
+        for (int i = 0; i < total; i++)
+        {
+            int layer = i / perLayer;
+            int rem   = i % perLayer;
+            int row   = rem / tableCols;
+            int col   = rem % tableCols;
+
+            Vector3 local = new Vector3(
+                (col - (tableCols - 1) * 0.5f) * tableCellSize.x,
+                tableYOffset + layer * tableLayerHeight,    // ★ y축 살짝 올리기 + 층 높이
+                (row - (tableRows - 1) * 0.5f) * tableCellSize.y
+            );
+            targets.Add(myTablePlace.TransformPoint(local));
+        }
+
+        // 스택캐리어에서 실물 꺼내 테이블에 전부 올리기
         int moved = 0;
-        if (TryGetComponent<StackCarrier>(out var stack))
+        var stack = GetComponent<StackCarrier>();
+        for (int i = 0; i < targets.Count; i++)
         {
-            // 테이블 표면 그리드 배치
-            var targets = new List<Vector3>();
-            int perLayer = tableCols * tableRows;
-            int countApprox = Mathf.Min(carrier.Count(wantProduct), perLayer);
-            for (int i = 0; i < countApprox; i++)
-            {
-                int row = i / tableCols;
-                int col = i % tableCols;
-                Vector3 local = new Vector3(
-                    (col - (tableCols - 1) * 0.5f) * tableCellSize.x,
-                    tableYOffset,
-                    (row - (tableRows - 1) * 0.5f) * tableCellSize.y
-                );
-                targets.Add(myTablePlace.TransformPoint(local));
-            }
+            if (!carrier.TryRemoveOne(wantProduct)) break;
 
-            int idx = 0;
-            while (carrier.Count(wantProduct) > 0 && idx < targets.Count)
+            GameObject go = stack ? stack.PopTop() : null;
+            if (go)
             {
-                if (!carrier.TryRemoveOne(wantProduct)) break;
-                var go = stack.PopTop(); // 실물 빵
-                if (go)
-                {
-                    // 부모/위치 지정(연출 없이 즉시 올림)
-                    go.transform.SetParent(myTablePlace, worldPositionStays: false);
-                    go.transform.position = targets[idx];
-                    go.transform.rotation = myTablePlace.rotation;
-                }
-                idx++;
-                moved++;
+                go.transform.SetParent(myTablePlace, worldPositionStays: false);
+                go.transform.position = targets[i];
+                go.transform.rotation = myTablePlace.rotation;
             }
+            moved++;
         }
-        else
-        {
-            // 비주얼 스택이 없다면 논리만 비움
-            while (carrier.Count(wantProduct) > 0)
-            {
-                if (!carrier.TryRemoveOne(wantProduct)) break;
-                moved++;
-            }
-        }
+
+        dineInPlacedCount = moved; // 이후 정산에 사용
     }
 
     private IEnumerator CoEatThenExit()
     {
+        // 식사 시간 대기
         yield return new WaitForSeconds(eatSeconds);
 
-        // (선택) 테이블 위 빵 정리
+        // 1) 테이블 위 실물 정리(풀 회수)
         if (myTablePlace)
         {
             var all = myTablePlace.GetComponentsInChildren<PooledObject>(includeInactive: true);
@@ -468,6 +483,39 @@ public class CustomerAgent : MonoBehaviour
             }
         }
 
+        // 2) 쓰레기 프리팹 생성(테이블 표면 기준 오프셋)
+        if (trashPrefab && myTablePlace)
+        {
+            Vector3 trashPos = myTablePlace.TransformPoint(trashLocalOffset);
+            var trashGo = Instantiate(trashPrefab, trashPos, myTablePlace.rotation, myTablePlace);
+            var trash = trashGo.GetComponent<TableTrash>();
+            if (trash)
+            {
+                trash.Init(tableSeats);                 // seatMgr 주입
+                tableSeats?.MarkSeatDirtyBy(this, trash); // ★ 좌석을 dirty로 전환(occupied=false, dirty=true)
+            }
+        }
+
+        // 3) 돈 스택 생성 + 판매 집계
+        if (tableSeats && dineInPlacedCount > 0 && wantProduct != null)
+        {
+            int unit = reservedUnitPrice > 0
+                ? reservedUnitPrice
+                : (tableSeats ? tableSeats.GetUnitPrice(wantProduct) : 0);
+
+            int revenue = Mathf.Max(0, unit * dineInPlacedCount);
+
+            Debug.Log($"revenue ::: {revenue}");
+            
+            if (dineInMoneyStacker) {
+                dineInMoneyStacker.StackAmount(revenue);
+            } else {
+                Debug.LogWarning("[CustomerAgent] Dine-in MoneyStacker is NULL.", this);
+            }
+            SalesTracker.ReportSale(wantProduct, dineInPlacedCount, revenue);
+        }
+        
+        // 좌석 해제 → 다음 손님 진행
         if (tableSeats) tableSeats.ReleaseBy(this);
         DoneAndExit();
     }
@@ -531,5 +579,17 @@ public class CustomerAgent : MonoBehaviour
     public void InjectTableSeats(TableSeatManager seats)
     {
         if (seats) this.tableSeats = seats;
+    }
+
+    public void InjectDineInMoneyStacker(MoneyStacker ms)
+    {
+        dineInMoneyStacker = ms;
+    }
+    
+    public void PrepareReservedSeat(Transform seatAnchor, Transform tablePlace, int unitPrice)
+    {
+        mySeatAnchor = seatAnchor;
+        myTablePlace = tablePlace;
+        reservedUnitPrice = unitPrice;
     }
 }

@@ -25,11 +25,21 @@ public class UnlockableArea : MonoBehaviour
     {
         if (IsUnlocked) return;
         IsUnlocked = true;
-        SetLockedVisual(false);
 
+        // 잠금/해금 세트 전환
+        if (lockedSet != null)
+            foreach (var go in lockedSet) if (go) go.SetActive(false);
+        if (unlockedSet != null)
+            foreach (var go in unlockedSet) if (go) go.SetActive(true);
+
+        // 테이블 스폰(필요 시)
         if (tablePrefab && tableSpawnPoints != null)
-            foreach (var p in tableSpawnPoints) if (p) Instantiate(tablePrefab, p.position, p.rotation);
+        {
+            foreach (var p in tableSpawnPoints)
+                if (p) Instantiate(tablePrefab, p.position, p.rotation, transform);
+        }
 
         OnUnlocked?.Invoke();
+        Analytics.Log("area_unlocked", new { area = name });
     }
 }

@@ -22,6 +22,10 @@ public class CheckoutCounter : MonoBehaviour
     [SerializeField] private List<PriceEntry> priceTable = new();
     [SerializeField] private MoneyStacker moneyStacker;
     
+    [SerializeField] private bool isDineInCounter = false;   // 이 카운터가 다인인용인가?
+    [SerializeField] private TableSeatManager tableSeats;    // 좌석 매니저
+    [SerializeField] private UnlockableArea tableAreaUnlock; // 테이블 구역 해금(옵션)
+    
     private bool busyOne;
     private Coroutine loop;
 
@@ -60,43 +64,50 @@ public class CheckoutCounter : MonoBehaviour
     }
 
     private IEnumerator CoServiceWhileAnyPlayerInside()
+{
+    while (_playerContacts.Count > 0)
     {
-        while (_playerContacts.Count > 0)
+        if (!busyOne && lane != null && lane.IsFrontReadyForService(out var front))
         {
-            if (!busyOne && lane != null && lane.IsFrontReadyForService(out var front)) // ← Lane의 준비 판정만 사용
+            if (front != null && !front.Servicing)
             {
-                if (front != null && !front.Servicing)
+                if (isDineInCounter)
                 {
-                    // 1) 실제 들고있는 개수(스택 기준으로 캡쳐)
+                    if (!front.IsDineIn) { yield return null; continue; }
+                    if (!IsTableAreaAvailable()) { yield return null; continue; }
+
+                    if (!tableSeats.TryReserve(out var seatAnchor, out var tablePlace, front) || !seatAnchor)
+                    { yield return null; continue; }
+
+                    int unit = GetUnitPrice(front.WantProduct);
+                    front.PrepareReservedSeat(seatAnchor, tablePlace, unit);
+                    front.InjectDineInMoneyStacker(moneyStacker); 
+
+                    bool started = lane.TryStartServiceForFront(0.2f, who =>
+                    {
+                        // 결제/돈쌓기는 없음. 좌석은 이미 예약되어 있으므로 바로 테이블로 보낸다.
+                        who.AfterCheckout();
+                    });
+                    if (started) { busyOne = true; try { yield return null; } finally { busyOne = false; } }
+                }
+                else
+                {
+                    // ── 기존 테이크아웃 로직 그대로 (판매/돈쌓기/VFX 포함)
                     var stack = front.GetComponent<StackCarrier>();
                     int count = stack != null ? stack.Count : front.WantCount;
-
-                    // 2) VFX 총 길이로 서비스 시간 동기화
                     float vfxSec = checkoutVfx ? checkoutVfx.EstimateDuration(count) : serviceSeconds;
 
-                    Analytics.Log("counter_service", new {
-                        count,
-                        unitPrice = GetUnitPrice(front.WantProduct),
-                        revenue = Mathf.Max(0, GetUnitPrice(front.WantProduct) * count)
-                    });
-                    
-                    // 3) 결제 시작 (완료 콜백: 돈/판매량 처리)
                     bool started = lane.TryStartServiceForFront(vfxSec, who =>
                     {
                         int unit    = GetUnitPrice(who.WantProduct);
                         int revenue = Mathf.Max(0, unit * count);
-                        
                         SalesTracker.ReportSale(who.WantProduct, count, revenue);
                         if (moneyStacker) moneyStacker.StackAmount(revenue);
                     });
 
-                    // 4) 시작되면 즉시 봉투 연출 실행
                     if (started && checkoutVfx)
                     {
-                        // 스택에서 실물 하나 꺼내오기(없으면 null)
                         System.Func<GameObject> popOne = () => stack ? stack.PopTop() : null;
-
-                        // 봉투에 들어간 직후 풀 회수(풀 없으면 Destroy)
                         System.Action<GameObject> onConsumeOne = go =>
                         {
                             if (!go) return;
@@ -104,22 +115,16 @@ public class CheckoutCounter : MonoBehaviour
                             if (po != null && PoolManager.Instance != null) PoolManager.Instance.Despawn(go);
                             else Destroy(go);
                         };
-
-                        checkoutVfx.Play(
-                            who: front,
-                            itemCount: count,
-                            popOneVisual: popOne,
-                            onConsumeOne: onConsumeOne,
-                            onAllDone: null
-                        );
+                        checkoutVfx.Play(front, count, popOne, onConsumeOne, null);
                     }
 
-                    if (started) { busyOne = true; yield return null; busyOne = false; }
+                    if (started) { busyOne = true; try { yield return null; } finally { busyOne = false; } }
                 }
             }
-            yield return null;
         }
+        yield return null;
     }
+}
 
     private int GetUnitPrice(ProductType t)
     {
@@ -139,5 +144,12 @@ public class CheckoutCounter : MonoBehaviour
             if (w != null) return w;
         }
         return null;
+    }
+    
+    private bool IsTableAreaAvailable()
+    {
+        if (!isDineInCounter) return false;
+        if (tableAreaUnlock && !tableAreaUnlock.IsUnlocked) return false; // 해금이 필요 없다면 이 줄 삭제
+        return tableSeats && tableSeats.HasFreeSeat();
     }
 }

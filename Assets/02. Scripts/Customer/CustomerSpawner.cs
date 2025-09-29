@@ -30,6 +30,9 @@ public class CustomerSpawner : MonoBehaviour
     [Header("Dine-In Unlock / Mix")]
     [SerializeField] private bool  dineInUnlocked = false;         // 해금 전: false
     [SerializeField, Range(0f,1f)] private float dineInWeight = 0.5f; // 해금 후 섞일 비율
+    
+    [Header("Dine-In Cash (Scene)")]
+    [SerializeField] private MoneyStacker dineInMoneyStacker;
 
     // runtime
     private readonly HashSet<CustomerAgent> alive = new();
@@ -103,11 +106,14 @@ public class CustomerSpawner : MonoBehaviour
 
         // 유형/레인/좌석 주입 + 수요 설정`
         agent.SetKind(kind == SpawnKind.DineIn ? CustomerAgent.CustomerKind.DineIn
-                                               : CustomerAgent.CustomerKind.Takeout);
+            : CustomerAgent.CustomerKind.Takeout);
         agent.InjectLanes(laneTakeout, laneDineIn);
         agent.InjectTableSeats(tableSeats);
-        agent.SetDemand(product, count);
 
+        if (agent.IsDineIn) agent.InjectDineInMoneyStacker(dineInMoneyStacker);
+
+        agent.SetDemand(product, count);
+        
         // 회수 이벤트 연결
         agent.OnReturnedToPool -= HandleReturned;
         agent.OnReturnedToPool += HandleReturned;
@@ -149,8 +155,11 @@ public class CustomerSpawner : MonoBehaviour
             : CustomerAgent.CustomerKind.Takeout);
         agent.InjectLanes(laneTakeout, laneDineIn);
         agent.InjectTableSeats(tableSeats);
-        agent.SetDemand(product, count);
 
+        if (agent.IsDineIn) agent.InjectDineInMoneyStacker(dineInMoneyStacker);
+
+        agent.SetDemand(product, count);
+        
         agent.OnReturnedToPool -= HandleReturned;
         agent.OnReturnedToPool += HandleReturned;
         alive.Add(agent);

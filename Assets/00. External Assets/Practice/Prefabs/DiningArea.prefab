@@ -35,6 +35,7 @@ Transform:
   - {fileID: 2037986144156072849}
   - {fileID: 2037986144309340178}
   - {fileID: 2000399662330029813}
+  - {fileID: 5374462349401522572}
   m_Father: {fileID: 2000399661276122520}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -190,6 +191,7 @@ MonoBehaviour:
   toZoneProfile: {fileID: 11400000, guid: 798cc95b62e480442b00af37d1228302, type: 2}
   cashPoolKey: CashBill
   spawnYawDeg: 90
+  disableWalls: []
   areaToUnlock: {fileID: 2000399662515279952}
 --- !u!1 &2000399661029022554
 GameObject:
@@ -318,7 +320,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2000399661276122520}
-  - component: {fileID: 2000399661276122525}
   m_Layer: 0
   m_Name: DiningArea
   m_TagString: Untagged
@@ -333,7 +334,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2000399661276122521}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -345,19 +346,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &2000399661276122525
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2000399661276122521}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &2000399662330029810
 GameObject:
   m_ObjectHideFlags: 0
@@ -525,6 +513,82 @@ MonoBehaviour:
   tablePrefab: {fileID: 919132149155446097, guid: d5b33a025f2ac114eb63655463f0ed5b, type: 3}
   tableSpawnPoints:
   - {fileID: 2000399662330029813}
+--- !u!1 &4469455926523627411
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5374462349401522572}
+  - component: {fileID: 1248840680971653213}
+  - component: {fileID: 8630887774063143846}
+  m_Layer: 7
+  m_Name: MoneyPos
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5374462349401522572
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4469455926523627411}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 4, y: 0.5, z: 4}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2000399660546139633}
+  m_RootOrder: 7
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &1248840680971653213
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4469455926523627411}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 1
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Size: {x: 2, y: 1, z: 1}
+  m_Center: {x: 0.75, y: 0, z: 0.5}
+--- !u!114 &8630887774063143846
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4469455926523627411}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7f337bda0d148b4aa668d6126c4eb29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gridAnchor: {fileID: 5374462349401522572}
+  parentForBills: {fileID: 5374462349401522572}
+  cols: 3
+  rows: 3
+  cellSize: {x: 0.75, y: 0.45}
+  layerHeight: 0.2
+  valuePerBill: 5
+  cashPoolKey: CashBill
+  riseDistance: 0.25
+  riseDuration: 0.25
+  riseEase: 9
+  useScaleRise: 1
+  yawDeg: 90
+  playerLayers:
+    serializedVersion: 2
+    m_Bits: 64
+  perBillStagger: 0.02
+  toPlayerProfile: {fileID: 11400000, guid: 798cc95b62e480442b00af37d1228302, type: 2}
 --- !u!1001 &2000399661139489966
 PrefabInstance:
   m_ObjectHideFlags: 0
